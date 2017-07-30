@@ -3,44 +3,71 @@
 import UIKit
 import PlaygroundSupport
 
+
+class Promise<T> {
+
+    //token is called by worker when its done async task
+    var token: ((T) -> ())?
+
+    // This is the async task that we are abstracting over
+    var worker: (() -> ())?
+
+    init() { }
+
+    func then(_ toF: @escaping (T) -> ())  {
+        self.token = toF
+        worker?()
+    }
+
+}
+
 public class Network {
 
     enum NetworkError: Error {
         case unknown
     }
 
-    private var eventual: ((Result<Data>) -> ())?
     private var task: URLSessionDataTask? = nil
     private let url: URL
 
     init(_ url: URL) {
         self.url = url
-        let session = URLSession(configuration: .default)
-        task = session.dataTask(with: url) { (data, response, error) in
-            if let d = data, error == nil {
-                self.eventual?(.success(d))
-            } else if let e = error {
-                self.eventual?(.failure(e))
-            } else {
-                self.eventual?(.failure(NetworkError.unknown))
+    }
+
+    func get() -> Promise<Result<Data>> {
+        //1. Make empty promise
+        let promise = Promise<Result<Data>>()
+
+        //2. Set the worker async block for the promise
+        promise.worker = {
+            let session = URLSession(configuration: .default)
+            let task = session.dataTask(with: self.url) { (data, response, error) in
+                if let d = data, error == nil {
+                    // 3. Use the empty promise to call the token
+                    // This token will be injected by user when they call then
+                    promise.token?(.success(d))
+                } else if let e = error {
+                    promise.token?(.failure(e))
+                } else {
+                    promise.token?(.failure(NetworkError.unknown))
+                }
             }
+            // 4. Resume the task when the worker is invoked
+            task.resume()
         }
-    }
-
-//    func then(_ doF: @escaping (Result<Data>) -> ()) -> () {
-//        self.eventual = doF
-//    }
-
-    func then(_ doF: @escaping (Result<Data>) -> ()) -> Network {
-        self.eventual = doF
-        return self
-    }
-
-    func finilize() {
-        task?.resume()
+        return promise
     }
 
 }
+
+
+
+
+
+
+
+
+
 
 enum DataConversionError: Error {
     case dataCannotBeConvertedToString
@@ -67,13 +94,9 @@ func takeFirstLine(_ string: String) -> Result<String> {
 
 
 let url = URL(string: "https://www.kandelvijaya.com")!
-let kvNetwork = Network(url)
-kvNetwork.then { (res) in
-    print(res.bind(dataToString))
-}.then { (res) in
+let kvNetwork = Network(url).get().then { (res) in
     print(res.bind(dataToString).bind(takeFirstLine))
-}.finilize()
-
+}
 
 
 
