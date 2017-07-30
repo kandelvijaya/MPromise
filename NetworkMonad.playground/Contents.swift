@@ -14,9 +14,18 @@ class Promise<T> {
 
     init() { }
 
-    func then(_ toF: @escaping (T) -> ())  {
-        self.token = toF
+    // We want this to return a new promise indeed
+    func then<U>(_ toF: @escaping (T) -> U) -> Promise<U> {
+        let upcomingPromise = Promise<U>()
+        upcomingPromise.worker = nil
+
+        self.token = { tk in
+            let transformed = toF(tk)
+            // Call the next promises token when we are done
+            upcomingPromise.token?(transformed)
+        }
         worker?()
+        return upcomingPromise
     }
 
 }
@@ -95,7 +104,12 @@ func takeFirstLine(_ string: String) -> Result<String> {
 
 let url = URL(string: "https://www.kandelvijaya.com")!
 let kvNetwork = Network(url).get().then { (res) in
-    print(res.bind(dataToString).bind(takeFirstLine))
+        return res.bind(dataToString)
+    }.then {
+        print($0.bind(takeFirstLine))
+        return "Something"
+    }.then {
+        print($0)
 }
 
 
