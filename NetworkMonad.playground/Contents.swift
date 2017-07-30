@@ -6,25 +6,26 @@ import PlaygroundSupport
 
 class Promise<T> {
 
-    //token is called by worker when its done async task
-    var token: ((T) -> ())?
+    //aCompletion is called by aTask when its done
+    var aCompltion: ((T) -> ())?
 
     // This is the async task that we are abstracting over
-    var worker: (() -> ())?
+    var aTask: (() -> ())?
 
     init() { }
 
-    // We want this to return a new promise indeed
+    // We want our then to return a new compose promise so that it can be chained
     func then<U>(_ toF: @escaping (T) -> U) -> Promise<U> {
-        let upcomingPromise = Promise<U>()
-        upcomingPromise.worker = nil
 
-        self.token = { tk in
+        let upcomingPromise = Promise<U>()
+        upcomingPromise.aTask = nil
+
+        self.aCompltion = { tk in
             let transformed = toF(tk)
-            // Call the next promises token when we are done
-            upcomingPromise.token?(transformed)
+            // Call the next promises token when this is done
+            upcomingPromise.aCompltion?(transformed)
         }
-        worker?()
+        aTask?()
         return upcomingPromise
     }
 
@@ -48,17 +49,17 @@ public class Network {
         let promise = Promise<Result<Data>>()
 
         //2. Set the worker async block for the promise
-        promise.worker = {
+        promise.aTask = {
             let session = URLSession(configuration: .default)
             let task = session.dataTask(with: self.url) { (data, response, error) in
                 if let d = data, error == nil {
                     // 3. Use the empty promise to call the token
                     // This token will be injected by user when they call then
-                    promise.token?(.success(d))
+                    promise.aCompltion?(.success(d))
                 } else if let e = error {
-                    promise.token?(.failure(e))
+                    promise.aCompltion?(.failure(e))
                 } else {
-                    promise.token?(.failure(NetworkError.unknown))
+                    promise.aCompltion?(.failure(NetworkError.unknown))
                 }
             }
             // 4. Resume the task when the worker is invoked
