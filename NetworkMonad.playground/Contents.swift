@@ -12,9 +12,10 @@ class Promise<T> {
     // This is the async task that we are abstracting over
     var aTask: (() -> ())?
 
-    init() { }
 
     // We want our then to return a new compose promise so that it can be chained
+    // Functorial
+    // TODO: Constrain this behavior such that only functors get it
     func then<U>(_ toF: @escaping (T) -> U) -> Promise<U> {
 
         let upcomingPromise = Promise<U>()
@@ -24,6 +25,24 @@ class Promise<T> {
             let transformed = toF(tk)
             // Call the next promises token when this is done
             upcomingPromise.aCompltion?(transformed)
+        }
+        aTask?()
+        return upcomingPromise
+    }
+
+    // Monadic composition
+    // TODO: Constrain such that U is either Functor or Monad
+    func bind<U>(_ toF: @escaping (T) -> Promise<U>) -> Promise<U> {
+
+        let upcomingPromise = Promise<U>()
+        upcomingPromise.aTask = nil
+
+        self.aCompltion = { tk in
+            let transformed = toF(tk)
+            transformed.then { u in
+                // Call the next promises token when this is done
+                upcomingPromise.aCompltion?(u)
+            }
         }
         aTask?()
         return upcomingPromise
@@ -104,14 +123,29 @@ func takeFirstLine(_ string: String) -> Result<String> {
 
 
 let url = URL(string: "https://www.kandelvijaya.com")!
-let kvNetwork = Network(url).get().then { (res) in
-        return res.bind(dataToString)
-    }.then {
-        print($0.bind(takeFirstLine))
-        return "Something"
-    }.then {
-        print($0)
+let url2 = URL(string: "https://www.objc.io")!
+
+//let kvNetwork = Network(url).get().then { (res) in
+//        return res.bind(dataToString)
+//    }.then {
+//        print($0.bind(takeFirstLine))
+//        return "Something"
+//    }.then {
+//        print($0)
+//}
+//
+//
+
+Network(url).get().bind { data  -> Promise<Result<Data>>   in
+        //lets say the data contained url
+
+    print(data.bind(dataToString).bind(takeFirstLine))
+    print("here we go")
+        return Network(url2).get()
+    }.then { data2 in
+        print(data2.bind(dataToString).bind(takeFirstLine))
 }
+
 
 
 
