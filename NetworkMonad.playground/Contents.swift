@@ -33,19 +33,20 @@ class Promise<T> {
     // Monadic composition
     // TODO: Constrain such that U is either Functor or Monad
     func bind<U>(_ toF: @escaping (T) -> Promise<U>) -> Promise<U> {
+        let transformed = then(toF)
+        return Promise.join(transformed)
+    }
 
-        let upcomingPromise = Promise<U>()
-        upcomingPromise.aTask = nil
-
-        self.aCompltion = { tk in
-            let transformed = toF(tk)
-            transformed.then { u in
-                // Call the next promises token when this is done
-                upcomingPromise.aCompltion?(u)
+    static func join<A>(_ input: Promise<Promise<A>>) -> Promise<A> {
+        let newP = Promise<A>()
+        newP.aTask = {
+            input.then { innerPromise in
+                innerPromise.then { innerValue in
+                    newP.aCompltion?(innerValue)
+                }
             }
         }
-        aTask?()
-        return upcomingPromise
+        return newP
     }
 
 }
