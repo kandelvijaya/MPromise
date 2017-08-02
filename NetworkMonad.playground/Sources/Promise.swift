@@ -10,6 +10,8 @@ public final class Promise<T> {
     /// This is the async task that we are abstracting over
     var aTask: ((Completion?) -> Void)? = nil
 
+    /// When creating a promise, you should care to call the first argument closure
+    /// that is provided with the eventual result value.
     public init(_ task: @escaping ((Completion?) -> Void)) {
         self.aTask = task
     }
@@ -37,7 +39,6 @@ public final class Promise<T> {
     }
 
     static public func join<A>(_ input: Promise<Promise<A>>) -> Promise<A> {
-
         return Promise<A>{ aCompletion in
             input.then { innerPromise in
                 innerPromise.then { innerValue in
@@ -47,6 +48,10 @@ public final class Promise<T> {
         }
     }
 
+    /// Call this method on any Promise type to execute and fulfill the promise.
+    /// This is important because the design of Promises is to not evaluate immediately
+    /// but create a expression that can be executed/ passed or stored. The expression
+    /// can be internally be optimized or lazily evaluated.
     public func execute() {
         aTask?(nil)
     }
