@@ -3,53 +3,9 @@
 import UIKit
 import PlaygroundSupport
 
-public class Network {
 
-    enum NetworkError: Error {
-        case unknown
-    }
-
-    private var task: URLSessionDataTask? = nil
-    private let url: URL
-
-    init(_ url: URL) {
-        self.url = url
-    }
-
-    func get() -> Promise<Result<Data>> {
-        //1. Make empty promise
-        let promise = Promise<Result<Data>>()
-
-        //2. Set the worker async block for the promise
-        promise.aTask = {
-            let session = URLSession(configuration: .default)
-            let task = session.dataTask(with: self.url) { (data, response, error) in
-                if let d = data, error == nil {
-                    // 3. When done, call into the promises `aCompletion`
-                    // Dont worry, `aCompletion` will be injected when you do subsequent `then`
-                    promise.aCompletion?(.success(d))
-                } else if let e = error {
-                    promise.aCompletion?(.failure(e))
-                } else {
-                    promise.aCompletion?(.failure(NetworkError.unknown))
-                }
-            }
-            // 4. Resume the task when the worker is invoked
-            task.resume()
-        }
-        return promise
-    }
-
-}
-
-
-
-
-
-
-
-
-
+let url = URL(string: "https://www.kandelvijaya.com")!
+let url2 = URL(string: "https://www.objc.io")!
 
 enum DataConversionError: Error {
     case dataCannotBeConvertedToString
@@ -71,23 +27,61 @@ func takeFirstLine(_ string: String) -> Result<String> {
 }
 
 
+func takeFirst20Chars(_ string: String) -> Result<String> {
+    let prefixed = String(string.prefix(20))
+    return .success(prefixed)
+}
 
 
 
 
-let url = URL(string: "https://www.kandelvijaya.com")!
-let url2 = URL(string: "https://www.objc.io")!
+func testThennedPromisePromise() -> Promise<()> {
+    let x = Network(url).get().then { (data) -> Result<String> in
+            print("Step 1")
+            let ret = data.bind(dataToString)
+            return ret
+        }.then { (str) -> () in
+            print("printing step 2")
+            print(str.bind(takeFirstLine))
+        }.bind { (_) -> Promise<Result<Data>> in
+            print("Step 3: Another task")
+            return Network(url2).get()
+        }.then { (result) -> () in
+            print("Step 4 printing")
+            print(result.bind(dataToString).bind(takeFirst20Chars))
+        }
+    return x
+}
+
+func testThennedPromisePromiseWithoutTypeInfomation() -> Promise<()> {
+    /// If any but the last then or bind block has a print statement, the closure return type
+    /// cannot be inferred. Strange but true.
+    let x = Network(url).get().then {
+            return $0.bind(dataToString)
+        }.then {
+            return ()
+        }.bind {
+            return Network(url2).get()
+        }.then {
+            print($0.bind(dataToString).bind(takeFirst20Chars))
+        }
+    return x
+}
 
 
-Network(url).get().bind { data  -> Promise<Result<Data>> in
-        //lets say the data contained url
-        print(data.bind(dataToString).bind(takeFirstLine))
-        print("here we go")
-        return Network(url2).get()
-    }.then { data2 in
-        print(data2.bind(dataToString).bind(takeFirstLine))
-    }
-print(2)
+func testNestingOfPromises() {
+    testThennedPromisePromise().then {
+        print("inner promise")
+        testThennedPromisePromiseWithoutTypeInfomation().execute()
+    }.execute()
+}
+
+// testThennedPromisePromise().execute()
+// testThennedPromisePromiseWithoutTypeInfomation().execute()
+// testNestingOfPromises()
+
+
+
 
 
 

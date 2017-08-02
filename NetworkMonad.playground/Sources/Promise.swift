@@ -7,11 +7,8 @@ public final class Promise<T> {
 
     public typealias Completion = (T) -> Void
 
-    /// aCompletion is called by aTask when its done
-    public var aCompletion: Completion?
-
     /// This is the async task that we are abstracting over
-    public var aTask: ((Completion?) -> Void)? = nil
+    var aTask: ((Completion?) -> Void)? = nil
 
     public init(_ task: @escaping ((Completion?) -> Void)) {
         self.aTask = task
