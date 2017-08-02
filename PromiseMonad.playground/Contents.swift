@@ -76,6 +76,7 @@ func testNestingOfPromises() {
     }.execute()
 }
 
+
 // testThennedPromisePromise().execute()
 // testThennedPromisePromiseWithoutTypeInfomation().execute()
 // testNestingOfPromises()
@@ -84,6 +85,5 @@ func testNestingOfPromises() {
 
 
 
-
-
+print("here: testing monadic promise")
 PlaygroundPage.current.needsIndefiniteExecution = true

@@ -57,3 +57,21 @@ public final class Promise<T> {
     }
 
 }
+
+
+extension Promise: Functor {
+
+    public typealias A = T
+    public typealias B = Any
+    public typealias AB = Promise<B>
+
+    /// fmap is the same as `then`
+    public func fmap<B>(_ t: @escaping (T) -> B) -> Promise<B> {
+        return then(t)
+    }
+
+}
+
+/// Already implements `bind`
+extension Promise: Monad { }
+

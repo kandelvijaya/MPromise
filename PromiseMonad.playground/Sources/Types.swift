@@ -1,20 +1,21 @@
 import Foundation
 
-protocol Functor {
+public protocol Functor {
 
     associatedtype A
     associatedtype B
     associatedtype AB
 
-    func fmap(_ t: (A) -> B) -> AB
+    func fmap(_ t: @escaping (A) -> B) -> AB
 
 }
 
 
 
-protocol Monad: Functor {
+public protocol Monad: Functor {
 
-    func bind(_ rhs: (A) -> AB) -> AB
+    func bind(_ rhs: @escaping (A) -> AB) -> AB
 
 }
+
 

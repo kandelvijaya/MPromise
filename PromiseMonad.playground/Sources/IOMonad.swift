@@ -1,14 +1,15 @@
 import Foundation
 
+// TODO: Implement Promise interms of IO Monad
 public class IO<T>: Functor {
 
-    typealias A = T
-    typealias B = Any
-    typealias AB = IO<B>
+    public typealias A = T
+    public typealias B = Any
+    public typealias AB = IO<B>
 
     let intermediate: T
 
-    public func fmap<B>(_ t: (T) -> B) -> IO<B> {
+    public func fmap<B>(_ t: @escaping (T) -> B) -> IO<B> {
         return IO<B>(t(intermediate))
     }
 
