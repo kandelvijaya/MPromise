@@ -5,34 +5,29 @@ import Foundation
 /// synchronous and flow oriented programming model.
 public final class Promise<T> {
 
+    public typealias Completion = (T) -> Void
+
     /// aCompletion is called by aTask when its done
-    public var aCompletion: ((T) -> ())?
+    public var aCompletion: Completion?
 
     /// This is the async task that we are abstracting over
-    /// NOTE: aTask has to call aCompletion inside the closure
-    public var aTask: (() -> ())? = nil
+    public var aTask: ((Completion?) -> Void)? = nil
 
-    /// You will need to call the aCompletion of the new Promise
-    /// when the asyncTask is done.
-    /// Due to this limitation we can't take argument in constructor
-    //    init(with asyncTask: (() -> Void)? = nil) {
-    //        self.aTask = asyncTask
-    //    }
-    public init() { }
+    public init(_ task: @escaping ((Completion?) -> Void)) {
+        self.aTask = task
+    }
 
     /// `then` is equivalent to `fmap`/`map`. It makes Promises Functorial.
     /// This deals with synchronous side of the world.
     /// If you want to create a Prmose inside of then, you are better off
     /// using `bind`
     @discardableResult public func then<U>(_ transform: @escaping (T) -> U) -> Promise<U> {
-        let upcomingPromise = Promise<U>()
-        self.aCompletion = { tk in
-            let transformed = transform(tk)
-            // Call the upcoming Promise's `completion` with the transformed value
-            upcomingPromise.aCompletion?(transformed)
+        return Promise<U>{ upcomingCompletion in
+            self.aTask?() { tk in
+                let transformed = transform(tk)
+                upcomingCompletion?(transformed)
+            }
         }
-        aTask?()
-        return upcomingPromise
     }
 
     /// `bind` is equivalent to `>>=`. It makes Promises Monadic
@@ -45,15 +40,18 @@ public final class Promise<T> {
     }
 
     static public func join<A>(_ input: Promise<Promise<A>>) -> Promise<A> {
-        let newP = Promise<A>()
-        newP.aTask = {
+
+        return Promise<A>{ aCompletion in
             input.then { innerPromise in
                 innerPromise.then { innerValue in
-                    newP.aCompletion?(innerValue)
-                }
-            }
+                    aCompletion?(innerValue)
+                }.execute()
+            }.execute()
         }
-        return newP
+    }
+
+    public func execute() {
+        aTask?(nil)
     }
 
 }
