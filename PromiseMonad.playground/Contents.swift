@@ -82,8 +82,13 @@ func testNestingOfPromises() {
 // testNestingOfPromises()
 
 
+let x = Promise(12).then {
+    return $0 * 2.10
+    }.then {
+        print($0)
+    }
 
-
+x.execute()
 
 print("here: testing monadic promise")
 PlaygroundPage.current.needsIndefiniteExecution = true

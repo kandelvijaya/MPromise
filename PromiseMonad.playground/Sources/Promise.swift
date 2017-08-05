@@ -3,7 +3,7 @@ import Foundation
 /// A Functor ==> Monadic type that encapsulates completion block
 /// and their associated async task thereby providing a nice
 /// synchronous and flow oriented programming model.
-public final class Promise<T> {
+public struct Promise<T> {
 
     public typealias Completion = (T) -> Void
 
@@ -14,6 +14,14 @@ public final class Promise<T> {
     /// that is provided with the eventual result value.
     public init(_ task: @escaping ((Completion?) -> Void)) {
         self.aTask = task
+    }
+
+    /// Constructor for creating promise out of normal values.
+    /// This is the lifting function; equivalent to `return` in haskell
+    public init(_ value: T) {
+        self.aTask = { aCompletion in
+            aCompletion?(value)
+        }
     }
 
     /// `then` is equivalent to `fmap`/`map`. It makes Promises Functorial.
