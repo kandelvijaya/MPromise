@@ -90,5 +90,79 @@ let x = Promise(12).then {
 
 x.execute()
 
+
+
+extension UIView {
+    func animate(duration: TimeInterval, animation: @escaping (UIView) -> Void) -> Promise<UIView> {
+        return Promise<UIView> { aC in
+            UIView.animate(withDuration: duration, animations: {
+                animation(self)
+            }) { finished in
+                if finished {
+                    aC?(self)
+                }
+            }
+        }
+    }
+}
+
+
+struct AnimationToken {
+    let duration: TimeInterval
+    let animation: (UIView) -> Void
+}
+
+extension Promise where T == UIView {
+    func animate(with duration: TimeInterval, animation: @escaping (UIView) -> Void) -> Promise<UIView> {
+        return self.bind { view in
+            view.animate(duration: duration, animation: animation)
+        }
+    }
+
+    func animate(with animationTokens: [AnimationToken]) -> Promise<UIView> {
+        return animateSequence(of: animationTokens, on: self)
+    }
+
+    private func animateSequence(of tokens: [AnimationToken], on promise: Promise<UIView>) -> Promise<UIView> {
+        guard let currentToken = tokens.first else {
+            return promise
+        }
+        let remainingTokens = Array(tokens.dropFirst())
+        let newPromise = promise.animate(with: currentToken.duration, animation: currentToken.animation)
+        return animateSequence(of: remainingTokens, on: newPromise)
+    }
+}
+
+
+let view = UIView(frame: CGRect(x: 0, y: 0, width: 200, height: 200))
+view.backgroundColor = .red
+
+let p = Promise(view).animate(with: 2) { view in
+        view.backgroundColor = .green
+    }.animate(with: 3) { view in
+        view.backgroundColor = .red
+    }.animate(with: 2) { view in
+        view.backgroundColor = .white
+    }
+
+
+
+//p.execute()
+
+let p2 = Promise(view).animate(with: [
+    AnimationToken(duration: 4) { $0.backgroundColor = .white },
+    AnimationToken(duration: 2) { $0.backgroundColor = .green },
+])
+
+p2.execute()
+
+
+
+
+
+
+
+
 print("here: testing monadic promise")
 PlaygroundPage.current.needsIndefiniteExecution = true
+PlaygroundPage.current.liveView = view
